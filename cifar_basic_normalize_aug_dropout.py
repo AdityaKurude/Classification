@@ -31,7 +31,7 @@ def augmentation(x, y):
     x = tf.image.resize_with_crop_or_pad(
         x, HEIGHT + 8, WIDTH + 8)
     x = tf.image.random_crop(x, [HEIGHT, WIDTH, NUM_CHANNELS])
-#     x = tf.image.random_flip_left_right(x)
+    x = tf.image.random_flip_left_right(x)
     return x, y
 
 
@@ -40,23 +40,14 @@ def normalize(x, y):
   x /= 255.0  # normalize to [0,1] range
   return x, y
 
-train_dataset = (train_dataset.map(normalize)
+train_dataset = (train_dataset
+                 .map(augmentation)
+                 .map(normalize)
                  .shuffle(50000)
                  .batch(128, drop_remainder=True))
 
 test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 test_dataset = (test_dataset.map(normalize).batch(128, drop_remainder=True))
-
-# def schedule(epoch):
-#   initial_learning_rate = BASE_LEARNING_RATE * BATCH_SIZE / 128
-#   learning_rate = initial_learning_rate
-#   for mult, start_epoch in LR_SCHEDULE:
-#     if epoch >= start_epoch:
-#       learning_rate = initial_learning_rate * mult
-#     else:
-#       break
-#   tf.summary.scalar('learning rate', data=learning_rate, step=epoch)
-#   return learning_rate
 
 
 

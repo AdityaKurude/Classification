@@ -7,7 +7,7 @@ from tensorflow.keras.layers import GlobalMaxPooling2D, Dense, Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv2D, Dense, Flatten, Dropout, SpatialDropout2D
 from tensorflow.keras.layers import GlobalMaxPooling2D, MaxPooling2D, BatchNormalization
-
+from tensorflow.keras.regularizers import l2
 
 
 HEIGHT = 32
@@ -17,10 +17,10 @@ NUM_CLASSES = 10
 NUM_GPUS = 1
 
 BATCH_SIZE = 128
-NUM_EPOCHS = 1000
+NUM_EPOCHS = 100
 NUM_TRAIN_SAMPLES = 50000
 
-EXPERIMENT_NAME = "cifar_basic_normalize_aug_spatial_and_normal_dropout_V5_1000_epochs_"
+EXPERIMENT_NAME = "cifar_basic_normalize_lowLR_aug_spatial_and_normal_dropout_REGU_BN_V8_100_epochs_"
 
 (x, y), (x_test, y_test) = keras.datasets.cifar10.load_data()
 
@@ -49,30 +49,38 @@ train_dataset = (train_dataset
 test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 test_dataset = (test_dataset.map(normalize).batch(128, drop_remainder=True))
 
-
+REGULARIZATION = l2(0.0001)
 
 i = Input(shape=(HEIGHT, WIDTH, NUM_CHANNELS))
-x = Conv2D(128, (3, 3), activation='relu')(i)
-x = MaxPooling2D((2, 2))(x)
-x = SpatialDropout2D(rate=0.2)(x)
-x = Conv2D(256, (3, 3), activation='relu')(x)
-x = SpatialDropout2D(rate=0.2)(x)
-x = MaxPooling2D((2, 2))(x)
-x = Conv2D(512, (3, 3), activation='relu')(x)
-x = SpatialDropout2D(rate=0.3)(x)
-x = Flatten()(x)
-x = Dense(128, activation='relu')(x)
+x = Conv2D(128, (3, 3), activation='relu', kernel_regularizer=REGULARIZATION)(i)
+x = SpatialDropout2D(rate=0.4)(x)
+x = BatchNormalization()(x)
 
-x = Dropout(rate=0.3)(x)
+x = MaxPooling2D((2, 2))(x)
+
+x = Conv2D(256, (3, 3), activation='relu', kernel_regularizer=REGULARIZATION)(x)
+x = SpatialDropout2D(rate=0.4)(x)
+x = BatchNormalization()(x)
+
+x = MaxPooling2D((2, 2))(x)
+
+x = Conv2D(512, (3, 3), activation='relu', kernel_regularizer=REGULARIZATION)(x)
+x = SpatialDropout2D(rate=0.5)(x)
+x = BatchNormalization()(x)
+
+x = Flatten()(x)
+x = Dense(128, kernel_regularizer=REGULARIZATION, activation='relu')(x)
+
+x = Dropout(rate=0.4)(x)
 # last hidden layer i.e.. output layer
-x = Dense(NUM_CLASSES)(x)
+x = Dense(NUM_CLASSES, kernel_regularizer=REGULARIZATION)(x)
  
 model = Model(i, x)
 
 
 model.compile(
           loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-          optimizer=tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False,name='Adam'),
+          optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False,name='Adam'),
           metrics=['accuracy'])
 
 
